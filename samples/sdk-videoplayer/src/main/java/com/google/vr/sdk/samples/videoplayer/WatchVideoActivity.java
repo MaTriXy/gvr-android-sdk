@@ -26,17 +26,19 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
+import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.drm.UnsupportedDrmException;
 import com.google.vr.ndk.base.AndroidCompat;
+import com.google.vr.ndk.base.BufferViewport;
 import com.google.vr.ndk.base.GvrLayout;
 import com.google.vr.ndk.base.GvrLayout.ExternalSurfaceListener;
 
 /**
  * Simple activity for video playback using the Asynchronous Reprojection Video Surface API. For a
  * detailed description of the API, see the <a
- * href="https://developers.google.com/vr/android/ndk/gvr-ndk-rendering#using_video_viewports">ndk
+ * href="https://developers.google.com/vr/reference/gvr-ndk-rendering#using_video_viewports">ndk
  * walkthrough</a>. This sample supports DRM and unprotected video playback, configured in {@link
- * Configuration}.
+ * Settings}.
  *
  * <p>The Surface for video output is acquired from the {@link ExternalSurfaceListener} and set on
  * the video player. For each frame, this sample draws a window (alpha 0) in the scene where video
@@ -53,6 +55,7 @@ public class WatchVideoActivity extends Activity {
   private VideoExoPlayer2 videoPlayer;
   private Settings settings;
   private boolean hasFirstFrame;
+  private int displayedFrameCount;
 
   // Transform a quad that fills the clip box at Z=0 to a 16:9 screen at Z=-4. Note that the matrix
   // is column-major, so the translation is on the last row rather than the last column in this
@@ -133,18 +136,19 @@ public class WatchVideoActivity extends Activity {
 
           @Override
           public void onFrameAvailable() {
+            displayedFrameCount++;
             // If this is the first frame, and the Activity is still in the foreground, signal to
             // remove the loading splash screen, and draw alpha 0 in the color buffer where the
             // video will be drawn by the GvrApi.
             if (!hasFirstFrame && videoPlayer != null) {
               surfaceView.queueEvent(
-                new Runnable() {
-                  @Override
-                  public void run() {
-                    Log.i(TAG, "Video has started playback, update renderer.");
-                    renderer.setHasVideoPlaybackStarted(true);
-                  }
-                });
+                  new Runnable() {
+                    @Override
+                    public void run() {
+                      Log.i(TAG, "Video has started playback, update renderer.");
+                      renderer.setHasVideoPlaybackStarted(true);
+                    }
+                  });
 
               hasFirstFrame = true;
             }
@@ -215,6 +219,7 @@ public class WatchVideoActivity extends Activity {
     } catch (UnsupportedDrmException e) {
       Log.e(TAG, "Error initializing video player", e);
     }
+    displayedFrameCount = 0;
   }
 
   @Override
@@ -314,6 +319,36 @@ public class WatchVideoActivity extends Activity {
                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_FULLSCREEN
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+  }
+
+  /**
+   * Get the number of frames displayed by the ExternalSurface.
+   */
+  public int getDisplayedFrameCount() {
+    return displayedFrameCount;
+  }
+
+  /**
+   * Get the number of frames decoded by the video decoder.
+   */
+  public int getDecodedFrameCount() {
+    if (videoPlayer != null) {
+      return videoPlayer.getRenderedOutputBufferCount();
+    }
+    return 0;
+  }
+
+  /**
+   * Get the frames per second of the video source.
+   */
+  public float getVideoFrameRate() {
+    if (videoPlayer != null) {
+      Format videoFormat = videoPlayer.getPlayer().getVideoFormat();
+      if (videoFormat != null) {
+        return videoFormat.frameRate;
+      }
+    }
+    return -1;
   }
 
   /**

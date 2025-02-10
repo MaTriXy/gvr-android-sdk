@@ -226,7 +226,7 @@ public class VideoScene {
    * seconds, based on the passed DecoderCounters object.
    *
    * @param averagingPeriodInSeconds Compute the average over this many seconds in the past.
-   * @param frameRate Native frame rate of the video.
+   * @param nativeFrameRate Native frame rate of the video.
    * @param counters DecoderCounters object retrieved from the video decoder.
    */
   public void updateVideoFpsFraction(
@@ -244,18 +244,18 @@ public class VideoScene {
     int pastBufferCount = 0;
 
     // Insert the current buffer count into the map for future computations.
-    frameCounts.put(Long.valueOf(nowTime), Integer.valueOf(currentBufferCount));
+    frameCounts.put(nowTime, currentBufferCount);
 
     // Loop over the map, pruning outdated entries and stopping at the first one that is within the
     // cutoff time.
     for (Iterator<Map.Entry<Long, Integer>> iterator = frameCounts.entrySet().iterator();
         iterator.hasNext(); ) {
       Map.Entry<Long, Integer> count = iterator.next();
-      if (count.getKey().longValue() < cutoffTime) {
+      if (count.getKey() < cutoffTime) {
         iterator.remove();
       } else {
-        pastTime = count.getKey().longValue();
-        pastBufferCount = count.getValue().intValue();
+        pastTime = count.getKey();
+        pastBufferCount = count.getValue();
         break;
       }
     }
@@ -273,13 +273,13 @@ public class VideoScene {
    * This needs to be called every time the GL context is re-created. There is no release
    * counterpart for now, since GL resources are automatically cleaned up when the GL context
    * is destroyed.
-   * 
+   *
    * @param context Android activity context used to load the resources.
    */
   public void prepareGLResources(Context context) {
     resources.prepare(context);
   }
-  
+
   /**
    * Manages all GL resources used by video scenes. Only one copy of these resources is needed
    * for all VideoScene instances.
@@ -341,7 +341,7 @@ public class VideoScene {
       if (spriteProgram == 0) {
         throw new RuntimeException("Could not create sprite program");
       }
-  
+
       // Prepare vertex data.
       ByteBuffer vertices = ByteBuffer.allocateDirect(VERTEX_DATA.length * FLOAT_SIZE_BYTES)
                                 .order(ByteOrder.nativeOrder());
@@ -350,7 +350,7 @@ public class VideoScene {
       vertexPositions.position(VERTEX_DATA_POS_OFFSET);
       vertexUVs = vertices.asFloatBuffer();
       vertexUVs.position(VERTEX_DATA_UV_OFFSET);
-  
+
       // Load the texture to be shown instead of the video while the latter is initializing.
       int[] textureIds = new int[1];
       GLES20.glGenTextures(1, textureIds, 0);
